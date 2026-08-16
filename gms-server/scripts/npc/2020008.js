@@ -24,32 +24,53 @@ status = -1;
 var job;
 var sel;
 actionx = {"Mental": false, "Physical": false};
+var farmBookMode = false;
+
+function ensurePartyAndStartElnathPQ() {
+    if (cm.getParty() == null) {
+        var Party = Java.type("org.gms.net.server.world.Party");
+        if (!Party.createParty(cm.getPlayer(), true)) {
+            cm.sendOk("Could not create a party automatically. Please form a 1-player party first.");
+            return;
+        }
+    } else if (!cm.isLeader()) {
+        cm.sendOk("Please have your party leader talk to me.");
+        return;
+    }
+
+    var em = cm.getEventManager("ElnathPQ");
+    if (em == null) {
+        cm.sendOk("The El Nath PQ has encountered an error.");
+        return;
+    }
+
+    var eli = em.getEligibleParty(cm.getParty());
+    if (eli.size() > 0) {
+        if (!em.startInstance(cm.getParty(), cm.getPlayer().getMap(), 1)) {
+            cm.sendOk("Another party is already challenging this instance. Please try another channel, or wait for the current party to finish.");
+        }
+    } else {
+        cm.sendOk("You cannot start this instance yet, because either your party is not in the range size, some of your party members are not eligible to attempt it or they are not in this map. If you're having trouble finding party members, try Party Search.");
+    }
+}
 
 function start() {
     if (cm.isQuestStarted(6192)) {
-        if (cm.getParty() == null) {
-            cm.sendOk("Form a party to start this instance.");
-            cm.dispose();
-            return;
-        }
-
-        var em = cm.getEventManager("ElnathPQ");
-        if (em == null) {
-            cm.sendOk("The El Nath PQ has encountered an error.");
-            cm.dispose();
-            return;
-        }
-
-        var eli = em.getEligibleParty(cm.getParty());
-        if (eli.size() > 0) {
-            if (!em.startInstance(cm.getParty(), cm.getPlayer().getMap(), 1)) {
-                cm.sendOk("Another party is already challenging this instance. Please try another channel, or wait for the current party to finish.");
-            }
-        } else {
-            cm.sendOk("You cannot start this instance yet, because either your party is not in the range size, some of your party members are not eligible to attempt it or they are not in this map. If you're having trouble finding party members, try Party Search.");
-        }
-
+        ensurePartyAndStartElnathPQ();
         cm.dispose();
+        return;
+    }
+
+    // Bowmaster / Marksman: farm Dragon's Breath skill book (no warrior quest 6192)
+    var jobId = cm.getJobId();
+    if (jobId == 312 || jobId == 322) {
+        if (cm.getPlayer().getLevel() < 80) {
+            cm.sendOk("You need to be at least #blevel 80#k to enter the escort training grounds.");
+            cm.dispose();
+            return;
+        }
+        farmBookMode = true;
+        cm.sendYesNo("Kidnapper Balrogs and Lycanthropes appear in the escort training grounds and often drop the #bDragon's Breath Skill Book#k.\r\nYou can enter repeatedly with a solo party. Enter now?");
         return;
     }
 
@@ -75,6 +96,14 @@ function start() {
 }
 
 function action(mode, type, selection) {
+    if (farmBookMode) {
+        if (mode == 1) {
+            ensurePartyAndStartElnathPQ();
+        }
+        cm.dispose();
+        return;
+    }
+
     status++;
     if (mode == 0 && type == 0) {
         status -= 2;

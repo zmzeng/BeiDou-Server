@@ -24,32 +24,53 @@ status = -1;
 var job;
 var sel;
 actionx = {"Mental": false, "Physical": false};
+var farmBookMode = false;
+
+function ensurePartyAndStartElnathPQ() {
+    if (cm.getParty() == null) {
+        var Party = Java.type("org.gms.net.server.world.Party");
+        if (!Party.createParty(cm.getPlayer(), true)) {
+            cm.sendOk("无法自动创建队伍。请先自行组成1人队后再来。");
+            return;
+        }
+    } else if (!cm.isLeader()) {
+        cm.sendOk("请让队长和我对话后再进入。");
+        return;
+    }
+
+    var em = cm.getEventManager("ElnathPQ");
+    if (em == null) {
+        cm.sendOk("埃尔奈斯组队副本遇到了一个错误。");
+        return;
+    }
+
+    var eli = em.getEligibleParty(cm.getParty());
+    if (eli.size() > 0) {
+        if (!em.startInstance(cm.getParty(), cm.getPlayer().getMap(), 1)) {
+            cm.sendOk("另一个队伍已经在挑战这个副本了。请尝试其他频道，或者等待当前队伍完成。");
+        }
+    } else {
+        cm.sendOk("您目前无法开始这个副本，因为您的队伍人数不在范围内，部分队伍成员不符合尝试条件，或者他们不在这张地图上。如果您在寻找队伍成员方面遇到困难，请尝试使用队伍搜索功能。");
+    }
+}
 
 function start() {
     if (cm.isQuestStarted(6192)) {
-        if (cm.getParty() == null) {
-            cm.sendOk("组队开始这个副本。");
-            cm.dispose();
-            return;
-        }
-
-        var em = cm.getEventManager("ElnathPQ");
-        if (em == null) {
-            cm.sendOk("埃尔奈斯组队副本遇到了一个错误。");
-            cm.dispose();
-            return;
-        }
-
-        var eli = em.getEligibleParty(cm.getParty());
-        if (eli.size() > 0) {
-            if (!em.startInstance(cm.getParty(), cm.getPlayer().getMap(), 1)) {
-                cm.sendOk("另一个队伍已经在挑战这个副本了。请尝试其他频道，或者等待当前队伍完成。");
-            }
-        } else {
-            cm.sendOk("您目前无法开始这个副本，因为您的队伍人数不在范围内，部分队伍成员不符合尝试条件，或者他们不在这张地图上。如果您在寻找队伍成员方面遇到困难，请尝试使用队伍搜索功能。");
-        }
-
+        ensurePartyAndStartElnathPQ();
         cm.dispose();
+        return;
+    }
+
+    // 神射手/箭神：刷飞龙冲击波技能册专用入口（不依赖战士任务 6192）
+    var jobId = cm.getJobId();
+    if (jobId == 312 || jobId == 322) {
+        if (cm.getPlayer().getLevel() < 80) {
+            cm.sendOk("护卫训练场需要#b80级以上#k才能进入。");
+            cm.dispose();
+            return;
+        }
+        farmBookMode = true;
+        cm.sendYesNo("护卫训练场里会出现#r绑架犯蝙蝠魔#k与#r绑架犯白狼人#k，常掉落#b飞龙冲击波技能册#k。\r\n可以单人组队反复进入刷书。要现在进去吗？");
         return;
     }
 
@@ -75,6 +96,14 @@ function start() {
 }
 
 function action(mode, type, selection) {
+    if (farmBookMode) {
+        if (mode == 1) {
+            ensurePartyAndStartElnathPQ();
+        }
+        cm.dispose();
+        return;
+    }
+
     status++;
     if (mode == 0 && type == 0) {
         status -= 2;
