@@ -32,7 +32,7 @@ import org.gms.net.packet.Packet;
 import org.gms.server.Trade;
 import org.gms.util.PacketCreator;
 import org.gms.util.Pair;
-import soloMapling.ArtificialPlayer.BotHelpers;
+import org.gms.extension.runtime.HostHooks;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -340,7 +340,7 @@ public class PlayerShop extends AbstractMapObject {
         visitorLock.lock();
         try {
             for (int i = 0; i < 3; i++) {
-                if (visitors[i] != null && !BotHelpers.isBot(visitors[i])) {
+                if (visitors[i] != null && !HostHooks.isArtificial(visitors[i])) {
                     visitors[i].sendPacket(packet);
                 }
             }
@@ -563,7 +563,7 @@ public class PlayerShop extends AbstractMapObject {
                 owner.gainMeso(price, true);
 
                 SoldItem soldItem = new SoldItem(bot.getName(), shopItem.getItem().getItemId(), quantity, price);
-                if (!BotHelpers.isBot(owner)) {
+                if (!HostHooks.isArtificial(owner)) {
                     owner.sendPacket(PacketCreator.getPlayerShopOwnerUpdate(soldItem, itemPosition));
                 }
                 synchronized (sold) {
@@ -602,7 +602,7 @@ public class PlayerShop extends AbstractMapObject {
             if (this.hasFreeSlot() && !this.isVisitor(chr)) {
                 this.addVisitor(chr);
                 chr.setPlayerShop(this);
-                if (!BotHelpers.isBot(chr)) {
+                if (!HostHooks.isArtificial(chr)) {
                     this.sendShop(chr.getClient());
                 }
 

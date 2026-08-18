@@ -37,7 +37,6 @@ import org.gms.config.GameConfig;
 import org.gms.constants.game.DelayedQuestUpdate;
 import org.gms.constants.game.ExpTable;
 import org.gms.constants.game.GameConstants;
-import soloMapling.ArtificialPlayer.BotTier;
 import org.gms.constants.id.ItemId;
 import org.gms.constants.id.MapId;
 import org.gms.constants.id.MobId;
@@ -487,7 +486,7 @@ public class Character extends AbstractCharacterObject {
     @Setter
     @Getter
     private boolean chasing = false;
-    private BotTier botTier = BotTier.getDefaultTier(); // SoloMapling bot tier (default C)
+    private BotTier botTier = BotTier.getDefaultTier(); // artificial-character performance tier (default C)
     private float mobExpRate = -1;
 
     @Getter
@@ -629,7 +628,7 @@ public class Character extends AbstractCharacterObject {
         }
     }
 
-    /** SoloMapling bots: clear awayFromWorld without PartySearch / playerAway side effects. */
+    /** Headless / artificial characters: clear awayFromWorld without PartySearch side effects. */
     public void markPresentInWorld() {
         awayFromWorld.set(false);
     }

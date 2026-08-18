@@ -1,4 +1,4 @@
-package soloMapling.ArtificialPlayer;
+package org.gms.client;
 
 /**
  * Represents bot performance tiers with ordering and utility methods.

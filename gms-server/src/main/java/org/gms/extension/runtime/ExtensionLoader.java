@@ -1,5 +1,6 @@
 package org.gms.extension.runtime;
 
+import org.gms.extension.api.ArtificialCharacters;
 import org.gms.extension.api.HostRuntime;
 import org.gms.extension.api.ServerExtension;
 import org.gms.extension.api.event.ServerReadyEvent;
@@ -105,6 +106,7 @@ public final class ExtensionLoader {
             }
         }
         pluginLoaders.clear();
+        ArtificialCharacters.clear();
         loaded.set(false);
         runtime = null;
     }

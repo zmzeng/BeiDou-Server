@@ -74,14 +74,17 @@ web中所有的图片均需要联网获取，感谢 https://maplestory.io 提供
 
 # 扩展运行时 / SoloMapling
 
-北斗通过 **薄 SPI** 从 `gms-server/plugins/*.jar` 加载外部扩展。SoloMapling 框架源码在独立仓库 **solomapling-plugin**（不嵌入本仓库）；本仓库只保留：
+北斗通过 **薄 SPI** 从 `gms-server/plugins/*.jar` 加载外部扩展。SoloMapling 框架在独立仓库 **solomapling-plugin**；本仓库只保留通用宿主能力（**不** `import soloMapling.*`）：
 
 | 组件 | 作用 |
 |------|------|
-| `extension-api` | `ServerExtension` / `HostRuntime` / 配置·事件·命令 |
-| `org.gms.extension.runtime` | `ExtensionLoader`、`BeiDouHostRuntime` |
-| 宿主 bridge | `BotClient`、`BotHelpers`、地图/交易/商店 hooks |
+| `extension-api` | `ServerExtension` / `HostRuntime` / `ArtificialCharacters` / 生命周期事件 |
+| `org.gms.extension.runtime` | `ExtensionLoader`、`HostHooks` |
+| `org.gms.extension.event` | `CharacterMapEnteredEvent`、`CharacterChatEvent`、`PartyInviteEvent`… |
+| 仿真 API | `BotClient`、`BotTier`、`PendingTradeInvites`、`moveBot` 等 |
 | `gms-server/plugins/` | 放置 `solomapling-plugin-*.jar` |
+
+插件在 `onLoad` 注册 `CharacterClassifier`；宿主用 `HostHooks.isArtificial` 做超时/脚本/商店分支，并用 `HostHooks.publish` 发游戏事件。详见 `gms-server/src/main/java/org/gms/extension/README.md`。
 
 ```bash
 # 1) 安装宿主（供插件 compile provided）
