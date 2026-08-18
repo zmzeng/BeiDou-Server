@@ -187,6 +187,14 @@ function action(mode, type, selection) {
                         }
                     } else if (stage == 2 || stage == 3) {
                         if (map.countMonsters() == 0) {
+                            const GameConfig = Java.type('org.gms.config.GameConfig');
+                            if (GameConfig.getServerBoolean("use_enable_stage_skip") && eim.getPlayerCount() == 1) {
+                                eim.setProperty("statusStg" + stage, 1);
+                                clearStage(stage, eim, curMap);
+                                cm.dispose();
+                                return;
+                            }
+
                             objset = [0, 0, 0, 0, 0, 0, 0, 0, 0];
                             var playersOnCombo = 0;
                             var party = cm.getEventInstance().getPlayers();
