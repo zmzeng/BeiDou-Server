@@ -71,3 +71,36 @@ web中所有的图片均需要联网获取，感谢 https://maplestory.io 提供
 # Wiki
 发现很多同学的问题基本在Wiki中都有答案，欢迎大家去看看。另外如果发现Wiki中没有的问题，欢迎提issue，或直接补充。已将Wiki开放为所有人都可以编辑。  
 [Wiki地址](https://github.com/BeiDouMS/BeiDou-Server/wiki)
+
+# 扩展运行时 / SoloMapling
+
+北斗通过 **薄 SPI** 从 `gms-server/plugins/*.jar` 加载外部扩展。SoloMapling 框架源码在独立仓库 **solomapling-plugin**（不嵌入本仓库）；本仓库只保留：
+
+| 组件 | 作用 |
+|------|------|
+| `extension-api` | `ServerExtension` / `HostRuntime` / 配置·事件·命令 |
+| `org.gms.extension.runtime` | `ExtensionLoader`、`BeiDouHostRuntime` |
+| 宿主 bridge | `BotClient`、`BotHelpers`、地图/交易/商店 hooks |
+| `gms-server/plugins/` | 放置 `solomapling-plugin-*.jar` |
+
+```bash
+# 1) 安装宿主（供插件 compile provided）
+mvn -pl extension-api,gms-server -am install -DskipTests
+
+# 2) 在 solomapling-plugin 仓库打包，并拷入 plugins/
+cp /path/to/solomapling-plugin/target/solomapling-plugin-*-SNAPSHOT.jar gms-server/plugins/
+
+# 3) 工作目录必须是 gms-server
+cd gms-server
+java -Xmx4g -Dspring.config.location=src/main/resources/application.yml \
+  -jar target/BeiDou-boot.jar
+```
+
+`application.yml`：
+
+```yaml
+solomapling:
+  plugins-enabled: true
+  plugins-dir: plugins
+  spawn-bots-on-startup: true
+```
