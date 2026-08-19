@@ -38,8 +38,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.gms.util.PacketCreator;
 import org.gms.util.Pair;
+import org.gms.extension.event.TradeInviteEvent;
 import org.gms.extension.runtime.HostHooks;
-import org.gms.server.trade.PendingTradeInvites;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -128,7 +128,7 @@ public class Trade {
 
         for (Item item : exchangeItems) {
             KarmaManipulator.toggleKarmaFlagToUntradeable(item);
-            if (!HostHooks.isArtificial(chr)) {
+            if (!HostHooks.tradeRelaxInventoryChecks(chr.getId())) {
                 InventoryManipulator.addFromDrop(chr.getClient(), item, show);
             }
         }
@@ -294,7 +294,8 @@ public class Trade {
             tradeItems.add(new Pair<>(item, item.getInventoryType()));
         }
 
-        return HostHooks.isArtificial(chr) || Inventory.checkSpotsAndOwnership(chr, tradeItems);
+        return HostHooks.tradeRelaxInventoryChecks(chr.getId())
+                || Inventory.checkSpotsAndOwnership(chr, tradeItems);
     }
 
     private boolean fitsUniquesInInventory() {
@@ -417,18 +418,8 @@ public class Trade {
             }
 
             logTrade(local, partner);
-            if (!HostHooks.isArtificial(local.getChr())) {
-                local.completeTrade();
-            }
-            if (!HostHooks.isArtificial(partner.getChr())) {
-                partner.completeTrade();
-            }
-            if (HostHooks.isArtificial(local.getChr())) {
-                local.setCallbackSuccessfulTrade();
-            }
-            if (HostHooks.isArtificial(partner.getChr())) {
-                partner.setCallbackSuccessfulTrade();
-            }
+            completeExchangeFor(local);
+            completeExchangeFor(partner);
 
             partner.getChr().setTrade(null);
             chr.setTrade(null);
@@ -559,9 +550,7 @@ public class Trade {
 
                 c1.sendPacket(PacketCreator.getTradeStart(c1.getClient(), c1.getTrade(), (byte) 0));
                 c2.sendPacket(PacketCreator.tradeInvite(c1));
-                if (HostHooks.isArtificial(c2)) {
-                    PendingTradeInvites.getInstance().addTradeRequest(c2, c1);
-                }
+                HostHooks.publish(new TradeInviteEvent(c2, c1));
             } else {
                 c1.message(I18nUtil.getMessage("Trade.inviteTrade.createInvite.msg1"));
                 cancelTrade(c1, TradeResult.NO_RESPONSE);
@@ -577,10 +566,11 @@ public class Trade {
         InviteResult inviteRes = InviteCoordinator.answerInvite(InviteType.TRADE, c1.getId(), c2.getId(), true);
 
         InviteResultType res = inviteRes.result;
-        if (res == InviteResultType.ACCEPTED || HostHooks.isArtificial(c2)) {
+        if (res == InviteResultType.ACCEPTED
+                || HostHooks.tradeAutoAcceptVisit(c1.getId(), c2.getId())) {
             if (c1.getTrade() != null && c1.getTrade().getPartner() == c2.getTrade() && c2.getTrade() != null && c2.getTrade().getPartner() == c1.getTrade()) {
                 c2.sendPacket(PacketCreator.getTradePartnerAdd(c1));
-                if (!HostHooks.isArtificial(c1)) {
+                if (!HostHooks.tradeSuppressPackets(c1.getId())) {
                     c1.sendPacket(PacketCreator.getTradeStart(c1.getClient(), c1.getTrade(), (byte) 1));
                 }
                 c1.getTrade().setFullTrade(true);
@@ -669,5 +659,14 @@ public class Trade {
         if (callback != null) {
             callback.onTradeResult(TradeResult.SUCCESSFUL);
         }
+    }
+
+    private static void completeExchangeFor(Trade side) {
+        Character participant = side.getChr();
+        if (HostHooks.tradeOnExchangeSuccess(participant.getId())) {
+            side.setCallbackSuccessfulTrade();
+            return;
+        }
+        side.completeTrade();
     }
 }

@@ -3,6 +3,7 @@ package org.gms.extension.runtime;
 import org.gms.extension.api.ArtificialCharacters;
 import org.gms.extension.api.HostRuntime;
 import org.gms.extension.api.ServerExtension;
+import org.gms.extension.api.TradeParticipants;
 import org.gms.extension.api.event.ServerReadyEvent;
 import org.gms.extension.api.event.ServerShutdownEvent;
 import org.gms.util.I18nUtil;
@@ -107,6 +108,7 @@ public final class ExtensionLoader {
         }
         pluginLoaders.clear();
         ArtificialCharacters.clear();
+        TradeParticipants.clear();
         loaded.set(false);
         runtime = null;
     }

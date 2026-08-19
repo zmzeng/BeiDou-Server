@@ -78,13 +78,13 @@ web中所有的图片均需要联网获取，感谢 https://maplestory.io 提供
 
 | 组件 | 作用 |
 |------|------|
-| `extension-api` | `ServerExtension` / `HostRuntime` / `ArtificialCharacters` / 生命周期事件 |
+| `extension-api` | `ServerExtension` / `HostRuntime` / `ArtificialCharacters` / `TradeParticipantHook` / 生命周期事件 |
 | `org.gms.extension.runtime` | `ExtensionLoader`、`HostHooks` |
-| `org.gms.extension.event` | `CharacterMapEnteredEvent`、`CharacterChatEvent`、`PartyInviteEvent`… |
-| 仿真 API | `BotClient`、`BotTier`、`PendingTradeInvites`、`moveBot` 等 |
+| `org.gms.extension.event` | `CharacterMapEnteredEvent`、`CharacterChatEvent`、`PartyInviteEvent`、`TradeInviteEvent`… |
+| 仿真 API | `BotClient`、`BotTier`、`moveBot` 等 |
 | `gms-server/plugins/` | 放置 `solomapling-plugin-*.jar` |
 
-插件在 `onLoad` 注册 `CharacterClassifier`；宿主用 `HostHooks.isArtificial` 做超时/脚本/商店分支，并用 `HostHooks.publish` 发游戏事件。详见 `gms-server/src/main/java/org/gms/extension/README.md`。
+插件在 `onLoad` 注册 `CharacterClassifier` 与可选的 `TradeParticipantHook`；宿主用 `HostHooks.isArtificial` / `HostHooks.trade*` 做超时/脚本/商店/交易分支，并用 `HostHooks.publish` 发游戏事件。详见 `gms-server/src/main/java/org/gms/extension/README.md`。
 
 ```bash
 # 1) 安装宿主（供插件 compile provided）

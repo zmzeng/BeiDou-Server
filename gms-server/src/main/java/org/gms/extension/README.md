@@ -4,9 +4,9 @@
 
 | Module / package | Role |
 |------------------|------|
-| `extension-api` | Shared SPI: `ServerExtension`, `HostRuntime`, `ArtificialCharacters`, lifecycle events |
+| `extension-api` | Shared SPI: `ServerExtension`, `HostRuntime`, `ArtificialCharacters`, `TradeParticipantHook` / `TradeParticipants`, lifecycle events |
 | `org.gms.extension.runtime` | `ExtensionLoader`, `BeiDouHostRuntime`, `HostHooks` |
-| `org.gms.extension.event` | Host gameplay events (`CharacterMapEnteredEvent`, `CharacterChatEvent`, `PartyInviteEvent`, …) |
+| `org.gms.extension.event` | Host gameplay events (`CharacterMapEnteredEvent`, `CharacterChatEvent`, `PartyInviteEvent`, `TradeInviteEvent`, …) |
 | `gms-server/plugins/*.jar` | Drop zone for external plugins |
 | **solomapling-plugin** (external repo) | Artificial-player framework jar |
 
@@ -19,21 +19,21 @@ Engine code must not `import soloMapling.*`. Use:
 | Capability | API |
 |------------|-----|
 | Is this character plugin-owned? | `HostHooks.isArtificial(chr)` / `ArtificialCharacters.isArtificial(id)` |
+| Trade participant rules | `TradeParticipants` / `HostHooks.trade*` + `TradeInviteEvent` |
 | Publish gameplay events | `HostHooks.publish(new CharacterMapEnteredEvent(...))` etc. |
-| Pending trades to headless chars | `org.gms.server.trade.PendingTradeInvites` |
 | Bot performance tier on `Character` | `org.gms.client.BotTier` |
 | Headless session | `org.gms.client.BotClient` |
 | Plugin lifecycle | `ServerExtension` + `ExtensionLoader` |
 
-Plugins register a `CharacterClassifier` in `onLoad` so the host can treat their characters specially (timeout, map scripts, shops).
+Plugins register a `CharacterClassifier` and optionally a `TradeParticipantHook` in `onLoad`.
 
 ## Load order
 
 1. Spring Boot starts
-2. `ServerManager` builds `BeiDouHostRuntime` and `ExtensionLoader.load(plugins/)` → each extension `onLoad` (classifiers + command registration)
+2. `ServerManager` builds `BeiDouHostRuntime` and `ExtensionLoader.load(plugins/)` → each extension `onLoad` (classifiers + trade hooks + command registration)
 3. `Server.init()`
 4. `notifyServerReady()` → `onServerReady` → optional SoloMapling world population
-5. On shutdown: `onUnload` → `ArtificialCharacters.clear()`
+5. On shutdown: `onUnload` → `ArtificialCharacters.clear()` / `TradeParticipants.clear()`
 
 ## Config
 
