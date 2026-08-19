@@ -54,9 +54,5 @@ gms-server/application.yml
 gms-server/EnvironmentPopulation.yaml
 
 # Optional FS overrides for SoloMapling resources (normally inside plugin jar)
-gms-server/src/main/java/soloMapling/**/movementDataPackets/
-gms-server/src/main/java/soloMapling/**/*.yaml
-gms-server/src/main/java/soloMapling/**/*.yml
-gms-server/src/main/java/soloMapling/**/*.bin
-gms-server/src/main/java/soloMapling/**/*.csv
-gms-server/src/main/java/soloMapling/**/*.txt
+# Do not keep a soloMapling tree under gms-server — it confuses host vs plugin ownership.
+gms-server/src/main/java/soloMapling/
