@@ -2682,7 +2682,12 @@ public class MapleMap {
             broadcastSpawnPlayerMapObjectMessage(chr, chr, true);
         }
 
-        sendObjectPlacement(chr.getClient());
+        // Artificial players have a headless client with no viewer Character.
+        // They must be visible to real players, but there is no socket/viewer
+        // that needs the map's existing objects sent back to them.
+        if (!HostHooks.isArtificial(chr)) {
+            sendObjectPlacement(chr.getClient());
+        }
 
         if (isStartingEventMap() && !eventStarted()) {
             chr.getMap().getPortal("join00").setPortalStatus(false);

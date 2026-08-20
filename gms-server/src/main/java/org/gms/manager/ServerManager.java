@@ -8,10 +8,12 @@ import org.gms.constants.net.ServerConstants;
 import org.gms.extension.api.HostRuntime;
 import org.gms.extension.runtime.BeiDouHostCommandRegistry;
 import org.gms.extension.runtime.BeiDouHostConfig;
+import org.gms.extension.runtime.BeiDouHostCharacterProvisioner;
 import org.gms.extension.runtime.BeiDouHostRuntime;
 import org.gms.extension.runtime.ExtensionLoader;
 import org.gms.extension.runtime.InMemoryHostEventBus;
 import org.gms.net.server.Server;
+import org.gms.service.AccountService;
 import org.gms.util.I18nUtil;
 import org.springdoc.core.properties.SpringDocConfigProperties;
 import org.springdoc.core.properties.SwaggerUiConfigProperties;
@@ -47,7 +49,8 @@ public class ServerManager implements ApplicationContextAware, ApplicationRunner
             HostRuntime runtime = new BeiDouHostRuntime(
                     new BeiDouHostConfig(environment),
                     new InMemoryHostEventBus(),
-                    new BeiDouHostCommandRegistry());
+                    new BeiDouHostCommandRegistry(),
+                    new BeiDouHostCharacterProvisioner(applicationContext.getBean(AccountService.class)));
             Path pluginsDir = Path.of(environment.getProperty(BeiDouHostConfig.PLUGINS_DIR, "plugins"));
             ExtensionLoader.getInstance().load(runtime, pluginsDir);
         }

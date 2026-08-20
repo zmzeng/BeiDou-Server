@@ -25,6 +25,7 @@ import org.gms.client.Character;
 import org.gms.client.Client;
 import org.gms.config.GameConfig;
 import org.gms.net.packet.InPacket;
+import org.gms.net.packet.Packet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.gms.server.life.MobSkill;
@@ -165,7 +166,13 @@ public final class MoveLifeHandler extends AbstractMovementPacketHandler {
                         useSkillLevel, nextMovementCouldBeSkill, mobMp);
             }
 
-            map.broadcastMessage(player, PacketCreator.moveMonster(objectid, nextMovementCouldBeSkill, rawActivity, useSkillId, useSkillLevel, pOption, startPos, p, movementDataLength), serverStartPos);
+            Packet movementPacket = PacketCreator.moveMonster(objectid, nextMovementCouldBeSkill,
+                    rawActivity, useSkillId, useSkillLevel, pOption, startPos, p, movementDataLength);
+            // The controller normally predicts its own mob movement, so old code excluded it from this
+            // relay. Some v83 clients still emit MOVE_LIFE while leaving the rendered mob at its spawn
+            // position. Relay the authoritative packet to every real observer, including the controller;
+            // MapleMap continues filtering headless artificial characters.
+            map.broadcastMessage(null, movementPacket, serverStartPos);
             //updatePosition(res, monster, -2); //does this need to be done after the packet is broadcast?
             map.moveMonster(monster, monster.getPosition());
         } catch (EmptyMovementException e) {

@@ -42,6 +42,7 @@ import org.gms.constants.skills.NightWalker;
 import org.gms.constants.skills.Priest;
 import org.gms.constants.skills.Shadower;
 import org.gms.constants.skills.WhiteKnight;
+import org.gms.extension.runtime.HostHooks;
 import org.gms.net.packet.Packet;
 import org.gms.net.server.channel.Channel;
 import org.gms.net.server.coordinator.world.MonsterAggroCoordinator;
@@ -86,6 +87,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Predicate;
+import java.util.function.ToIntFunction;
 
 public class Monster extends AbstractLoadedLife {
     private static final Logger log = LoggerFactory.getLogger(Monster.class);
@@ -549,7 +552,40 @@ public class Monster extends AbstractLoadedLife {
         giveFamilyRep(chr.getFamilyEntry());
     }
 
-    private void distributePartyExperience(Map<Character, Long> partyParticipation, float expPerDmg, Set<Character> underleveled, Map<Integer, Float> personalRatio, double sdevRatio) {
+    static List<Character> resolvePartyExperienceMembers(Party party, Collection<Character> mapPlayers) {
+        if (party == null) {
+            return Collections.emptyList();
+        }
+        Set<Integer> partyMemberIds = new HashSet<>();
+        for (PartyCharacter member : party.getMembers()) {
+            partyMemberIds.add(member.getId());
+        }
+        return resolvePartyExperienceMembers(
+                partyMemberIds, mapPlayers, Character::getId, Character::isLoggedInWorld);
+    }
+
+    static <T> List<T> resolvePartyExperienceMembers(
+            Collection<Integer> partyMemberIds, Collection<T> mapPlayers,
+            ToIntFunction<T> characterId, Predicate<T> presentInWorld) {
+        if (partyMemberIds == null || partyMemberIds.isEmpty() || mapPlayers == null) {
+            return Collections.emptyList();
+        }
+
+        List<T> resolved = new LinkedList<>();
+        for (T member : mapPlayers) {
+            // PartyCharacter keeps a direct Character reference. That reference can be stale
+            // after a headless companion is reloaded. Membership IDs remain authoritative,
+            // while the map provides the live Character object that receives EXP.
+            if (member != null
+                    && partyMemberIds.contains(characterId.applyAsInt(member))
+                    && presentInWorld.test(member)) {
+                resolved.add(member);
+            }
+        }
+        return resolved;
+    }
+
+    private void distributePartyExperience(Party party, Map<Character, Long> partyParticipation, float expPerDmg, Set<Character> underleveled, Map<Integer, Float> personalRatio, double sdevRatio) {
         IntervalBuilder leechInterval = new IntervalBuilder();
         leechInterval.addInterval(this.getLevel() - GameConfig.getServerInt("exp_split_level_interval"), this.getLevel() + GameConfig.getServerInt("exp_split_level_interval"));
 
@@ -572,9 +608,14 @@ public class Monster extends AbstractLoadedLife {
         List<Character> expMembers = new LinkedList<>();
         int totalPartyLevel = 0;
 
+        // Resolve against the map registry, not PartyCharacter.getPlayer(): headless
+        // companions can replace their Character instance while the party metadata still
+        // points at the previous one.
+        List<Character> sameMapPartyMembers = resolvePartyExperienceMembers(party, map.getAllPlayers());
+
         // thanks G h o s t, Alfred, Vcoc, BHB for poiting out a bug in detecting party members after membership transactions in a party took place
         if (GameConfig.getServerBoolean("use_enforce_mob_level_range")) {
-            for (Character member : partyParticipation.keySet().iterator().next().getPartyMembersOnSameMap()) {
+            for (Character member : sameMapPartyMembers) {
                 if (!leechInterval.inInterval(member.getLevel())) {
                     underleveled.add(member);
                     continue;
@@ -584,7 +625,7 @@ public class Monster extends AbstractLoadedLife {
                 expMembers.add(member);
             }
         } else {    // thanks Ari for noticing unused server flag after EXP system overhaul
-            for (Character member : partyParticipation.keySet().iterator().next().getPartyMembersOnSameMap()) {
+            for (Character member : sameMapPartyMembers) {
                 totalPartyLevel += member.getLevel();
                 expMembers.add(member);
             }
@@ -675,8 +716,8 @@ public class Monster extends AbstractLoadedLife {
             distributePlayerExperience(chr, exp, 0.0f, chr.getLevel(), true, isWhiteExpGain(chr, personalRatio, sdevRatio), false);
         }
 
-        for (Map<Character, Long> partyParticipation : partyExpDist.values()) {
-            distributePartyExperience(partyParticipation, expPerDmg, underleveled, personalRatio, sdevRatio);
+        for (Entry<Party, Map<Character, Long>> partyEntry : partyExpDist.entrySet()) {
+            distributePartyExperience(partyEntry.getKey(), partyEntry.getValue(), expPerDmg, underleveled, personalRatio, sdevRatio);
         }
 
         EventInstanceManager eim = getMap().getEventInstance();
@@ -1855,10 +1896,30 @@ public class Monster extends AbstractLoadedLife {
         Character newControllerDead = null;
 
         Character newControllerWithPuppet = null;
+        int minHiddenControlled = Integer.MAX_VALUE;
+        Character hiddenController = null;
+        int minHiddenControlledDead = Integer.MAX_VALUE;
+        Character hiddenControllerDead = null;
 
         for (Character chr : getMap().getAllPlayers()) {
-            if (!chr.isHidden() && chr.isLoggedInWorld()) {   // 过滤已断线/awayFromWorld 的幽灵玩家，避免被选为 controller 候选
+            if (!HostHooks.isArtificial(chr) && chr.isLoggedInWorld()) {
                 int ctrlMonsSize = chr.getNumControlledMonsters();
+
+                // Prefer visible players, preserving normal controller distribution. A hidden GM
+                // remains a valid fallback: its real client can drive mob movement without revealing
+                // the GM. Headless bots must never be selected because they cannot emit MOVE_LIFE.
+                if (chr.isHidden()) {
+                    if (chr.isAlive()) {
+                        if (ctrlMonsSize < minHiddenControlled) {
+                            minHiddenControlled = ctrlMonsSize;
+                            hiddenController = chr;
+                        }
+                    } else if (ctrlMonsSize < minHiddenControlledDead) {
+                        minHiddenControlledDead = ctrlMonsSize;
+                        hiddenControllerDead = chr;
+                    }
+                    continue;
+                }
 
                 if (isCharacterPuppetInVicinity(chr)) {
                     newControllerWithPuppet = chr;
@@ -1881,8 +1942,12 @@ public class Monster extends AbstractLoadedLife {
             return newControllerWithPuppet;
         } else if (newController != null) {
             return newController;
-        } else {
+        } else if (newControllerDead != null) {
             return newControllerDead;
+        } else if (hiddenController != null) {
+            return hiddenController;
+        } else {
+            return hiddenControllerDead;
         }
     }
 
@@ -1920,6 +1985,9 @@ public class Monster extends AbstractLoadedLife {
      * player controller.
      */
     public void aggroSwitchController(Character newController, boolean immediateAggro) {
+        if (newController != null && HostHooks.isArtificial(newController)) {
+            newController = getNextControllerCandidate();
+        }
         if (aggroUpdateLock.tryLock()) {
             try {
                 Character prevController = getController();
