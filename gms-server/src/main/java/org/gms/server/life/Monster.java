@@ -593,6 +593,15 @@ public class Monster extends AbstractLoadedLife {
 
         int membersSize = expMembers.size();
         float participationExp = partyDamage * expPerDmg;
+        Party participantParty = partyParticipation.keySet().iterator().next().getParty();
+        if (hasArtificialMember(participantParty)) {
+            log.info("Artificial-party EXP diagnostic map={} mobId={} mobLevel={} mobExp={} partyDamage={} participationExp={} "
+                            + "participants={} partyMembers={} eligible={} totalPartyLevel={}",
+                    getMap().getId(), getId(), getLevel(), getExp(), partyDamage, participationExp,
+                    describeCharacters(partyParticipation.keySet()),
+                    describePartyMembers(participantParty),
+                    describeCharacters(expMembers), totalPartyLevel);
+        }
 
         // thanks Crypter for reporting an insufficiency on party exp bonuses
         boolean hasPartySharers = membersSize > 1;
@@ -602,6 +611,41 @@ public class Monster extends AbstractLoadedLife {
             distributePlayerExperience(mc, participationExp, partyBonusMod, totalPartyLevel, mc == participationMvp, isWhiteExpGain(mc, personalRatio, sdevRatio), hasPartySharers);
             giveFamilyRep(mc.getFamilyEntry());
         }
+    }
+
+    private static boolean hasArtificialMember(Party party) {
+        if (party == null) {
+            return false;
+        }
+        for (PartyCharacter member : party.getMembers()) {
+            if (member.getPlayer() != null && HostHooks.isArtificial(member.getPlayer())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static String describePartyMembers(Party party) {
+        List<String> members = new ArrayList<>();
+        if (party != null) {
+            for (PartyCharacter member : party.getMembers()) {
+                Character player = member.getPlayer();
+                members.add(member.getId() + ":player=" + (player != null)
+                        + ":map=" + (player == null || player.getMap() == null ? -1 : player.getMapId())
+                        + ":logged=" + (player != null && player.isLoggedInWorld())
+                        + ":artificial=" + (player != null && HostHooks.isArtificial(player)));
+            }
+        }
+        return members.toString();
+    }
+
+    private static String describeCharacters(Collection<Character> characters) {
+        List<String> members = new ArrayList<>();
+        for (Character character : characters) {
+            members.add(character.getId() + ":level=" + character.getLevel()
+                    + ":exp=" + character.getExp());
+        }
+        return members.toString();
     }
 
     private void distributeExperience(int killerId) {
