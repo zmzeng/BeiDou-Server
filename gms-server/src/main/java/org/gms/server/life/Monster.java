@@ -87,8 +87,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.Predicate;
-import java.util.function.ToIntFunction;
 
 public class Monster extends AbstractLoadedLife {
     private static final Logger log = LoggerFactory.getLogger(Monster.class);
@@ -552,40 +550,7 @@ public class Monster extends AbstractLoadedLife {
         giveFamilyRep(chr.getFamilyEntry());
     }
 
-    static List<Character> resolvePartyExperienceMembers(Party party, Collection<Character> mapPlayers) {
-        if (party == null) {
-            return Collections.emptyList();
-        }
-        Set<Integer> partyMemberIds = new HashSet<>();
-        for (PartyCharacter member : party.getMembers()) {
-            partyMemberIds.add(member.getId());
-        }
-        return resolvePartyExperienceMembers(
-                partyMemberIds, mapPlayers, Character::getId, Character::isLoggedInWorld);
-    }
-
-    static <T> List<T> resolvePartyExperienceMembers(
-            Collection<Integer> partyMemberIds, Collection<T> mapPlayers,
-            ToIntFunction<T> characterId, Predicate<T> presentInWorld) {
-        if (partyMemberIds == null || partyMemberIds.isEmpty() || mapPlayers == null) {
-            return Collections.emptyList();
-        }
-
-        List<T> resolved = new LinkedList<>();
-        for (T member : mapPlayers) {
-            // PartyCharacter keeps a direct Character reference. That reference can be stale
-            // after a headless companion is reloaded. Membership IDs remain authoritative,
-            // while the map provides the live Character object that receives EXP.
-            if (member != null
-                    && partyMemberIds.contains(characterId.applyAsInt(member))
-                    && presentInWorld.test(member)) {
-                resolved.add(member);
-            }
-        }
-        return resolved;
-    }
-
-    private void distributePartyExperience(Party party, Map<Character, Long> partyParticipation, float expPerDmg, Set<Character> underleveled, Map<Integer, Float> personalRatio, double sdevRatio) {
+    private void distributePartyExperience(Map<Character, Long> partyParticipation, float expPerDmg, Set<Character> underleveled, Map<Integer, Float> personalRatio, double sdevRatio) {
         IntervalBuilder leechInterval = new IntervalBuilder();
         leechInterval.addInterval(this.getLevel() - GameConfig.getServerInt("exp_split_level_interval"), this.getLevel() + GameConfig.getServerInt("exp_split_level_interval"));
 
@@ -608,14 +573,9 @@ public class Monster extends AbstractLoadedLife {
         List<Character> expMembers = new LinkedList<>();
         int totalPartyLevel = 0;
 
-        // Resolve against the map registry, not PartyCharacter.getPlayer(): headless
-        // companions can replace their Character instance while the party metadata still
-        // points at the previous one.
-        List<Character> sameMapPartyMembers = resolvePartyExperienceMembers(party, map.getAllPlayers());
-
         // thanks G h o s t, Alfred, Vcoc, BHB for poiting out a bug in detecting party members after membership transactions in a party took place
         if (GameConfig.getServerBoolean("use_enforce_mob_level_range")) {
-            for (Character member : sameMapPartyMembers) {
+            for (Character member : partyParticipation.keySet().iterator().next().getPartyMembersOnSameMap()) {
                 if (!leechInterval.inInterval(member.getLevel())) {
                     underleveled.add(member);
                     continue;
@@ -625,7 +585,7 @@ public class Monster extends AbstractLoadedLife {
                 expMembers.add(member);
             }
         } else {    // thanks Ari for noticing unused server flag after EXP system overhaul
-            for (Character member : sameMapPartyMembers) {
+            for (Character member : partyParticipation.keySet().iterator().next().getPartyMembersOnSameMap()) {
                 totalPartyLevel += member.getLevel();
                 expMembers.add(member);
             }
@@ -716,8 +676,8 @@ public class Monster extends AbstractLoadedLife {
             distributePlayerExperience(chr, exp, 0.0f, chr.getLevel(), true, isWhiteExpGain(chr, personalRatio, sdevRatio), false);
         }
 
-        for (Entry<Party, Map<Character, Long>> partyEntry : partyExpDist.entrySet()) {
-            distributePartyExperience(partyEntry.getKey(), partyEntry.getValue(), expPerDmg, underleveled, personalRatio, sdevRatio);
+        for (Map<Character, Long> partyParticipation : partyExpDist.values()) {
+            distributePartyExperience(partyParticipation, expPerDmg, underleveled, personalRatio, sdevRatio);
         }
 
         EventInstanceManager eim = getMap().getEventInstance();
