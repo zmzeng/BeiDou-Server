@@ -22,6 +22,14 @@ public interface HostRuntime {
         return Optional.empty();
     }
 
+    default Optional<HostItemActions> itemActions() {
+        return Optional.empty();
+    }
+
+    default Optional<HostMonsterDrops> monsterDrops() {
+        return Optional.empty();
+    }
+
     /** Host identifier: {@code beidou}, {@code cosmic}, … */
     String hostId();
 }

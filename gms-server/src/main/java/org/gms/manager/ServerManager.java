@@ -9,6 +9,8 @@ import org.gms.extension.api.HostRuntime;
 import org.gms.extension.runtime.BeiDouHostCommandRegistry;
 import org.gms.extension.runtime.BeiDouHostConfig;
 import org.gms.extension.runtime.BeiDouHostCharacterProvisioner;
+import org.gms.extension.runtime.BeiDouHostItemActions;
+import org.gms.extension.runtime.BeiDouHostMonsterDrops;
 import org.gms.extension.runtime.BeiDouHostRuntime;
 import org.gms.extension.runtime.ExtensionLoader;
 import org.gms.extension.runtime.InMemoryHostEventBus;
@@ -50,7 +52,9 @@ public class ServerManager implements ApplicationContextAware, ApplicationRunner
                     new BeiDouHostConfig(environment),
                     new InMemoryHostEventBus(),
                     new BeiDouHostCommandRegistry(),
-                    new BeiDouHostCharacterProvisioner(applicationContext.getBean(AccountService.class)));
+                    new BeiDouHostCharacterProvisioner(applicationContext.getBean(AccountService.class)),
+                    new BeiDouHostItemActions(),
+                    new BeiDouHostMonsterDrops());
             Path pluginsDir = Path.of(environment.getProperty(BeiDouHostConfig.PLUGINS_DIR, "plugins"));
             ExtensionLoader.getInstance().load(runtime, pluginsDir);
         }
