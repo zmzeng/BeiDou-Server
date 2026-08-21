@@ -129,8 +129,8 @@ public final class PartyOperationHandler extends AbstractPacketHandler {
         }
     }
 
-    // The invite packet only reaches a real client. Extensions that own a character without one
-    // (SoloMapling bots) answer through this event instead.
+    // The invite packet only reaches a real client. Extensions that own a
+    // headless character answer through this event instead.
     private static void publishInvite(Character invited, Character inviter, int partyId) {
         HostRuntime runtime = ExtensionLoader.getInstance().getRuntime();
         if (runtime == null) {

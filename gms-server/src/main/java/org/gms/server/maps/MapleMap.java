@@ -2984,8 +2984,8 @@ public class MapleMap {
         chrRLock.lock();
         try {
             for (Character c : characters) {
-                // SoloMapling bots stay on maps with awayFromWorld=true until marked entered;
-                // never treat them as disconnect ghosts.
+                // Artificial characters may stay on maps with awayFromWorld=true until
+                // marked entered; never treat them as disconnect ghosts.
                 if (c != null && c.isAwayFromWorld() && !HostHooks.isArtificial(c)) {
                     ghosts.add(c);
                 }

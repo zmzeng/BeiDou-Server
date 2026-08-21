@@ -1,10 +1,8 @@
 package org.gms.server.maps;
 
 /**
- * Represents a rope or ladder climbable object parsed from WZ ladderRope data.
- * isLadder: true when the WZ {@code l} field is 1 (ladder), false for rope.
- *
- * Part of the GCMoveSystem terrain model (GreenCat dynamic movement).
+ * Climbable rope or ladder from WZ {@code ladderRope}.
+ * {@code isLadder} is true when the WZ {@code l} field is 1.
  */
 public record Rope(int x, int y1, int y2, boolean isLadder) {
     /** Top of the rope (smaller y = higher on screen). */

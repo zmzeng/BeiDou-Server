@@ -22,8 +22,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 package org.gms.constants.game;
 
 /**
- * MapleStory v83 character animation stance constants, used by the GCMoveSystem
- * dynamic movement engine to map physics state -> wire stance bytes.
+ * MapleStory v83 character animation stance constants, used to map
+ * physics / movement state to wire stance bytes.
  */
 public final class CharacterStance {
     public static final int WALK_RIGHT_STANCE = 2;

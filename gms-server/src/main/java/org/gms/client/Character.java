@@ -4910,7 +4910,7 @@ public class Character extends AbstractCharacterObject {
         return localstr;
     }
 
-    // GCMoveSystem: base 100 + equip bonuses + buff → BotMovementProfile bucket
+    // Base 100 + equip bonuses + speed buff; used by server-side movement.
     public int getTotalMoveSpeedStat() {
         int total = 100;
         for (Item item : getInventory(InventoryType.EQUIPPED)) {

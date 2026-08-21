@@ -35,7 +35,7 @@ src/main/resources/static/
 .claude/settings.local.json
 CLAUDE.local.md
 
-# SoloMapling / extension plugins (keep directory, ignore jars)
+# Extension plugins (keep directory, ignore jars)
 gms-server/plugins/*.jar
 !gms-server/plugins/.gitkeep
 
@@ -53,9 +53,9 @@ gms-server/heap.hprof
 gms-server/application.yml
 gms-server/EnvironmentPopulation.yaml
 
-# SoloMapling runtime + optional static overlays (plugin jar is source of truth for static assets)
+# Plugin runtime overlays (plugin jar is source of truth for static assets)
 gms-server/data/solomapling/
 gms-server/logs/BotLog.txt
 
-# Do not keep a soloMapling source mirror under gms-server
+# Do not keep plugin sources under gms-server
 gms-server/src/main/java/soloMapling/

@@ -4,49 +4,75 @@
 
 | Module / package | Role |
 |------------------|------|
-| `extension-api` | Shared SPI: `ServerExtension`, `HostRuntime`, `ArtificialCharacters`, `TradeParticipantHook` / `TradeParticipants`, lifecycle events |
+| `extension-api` | Shared SPI: `ServerExtension`, `HostRuntime`, `ArtificialCharacters`, `TradeParticipantHook` / `TradeParticipants`, `HostCharacterProvisioner`, lifecycle events |
 | `org.gms.extension.runtime` | `ExtensionLoader`, `BeiDouHostRuntime`, `HostHooks` |
 | `org.gms.extension.event` | Host gameplay events (`CharacterMapEnteredEvent`, `CharacterChatEvent`, `PartyInviteEvent`, `TradeInviteEvent`, …) |
-| `gms-server/plugins/*.jar` | Drop zone for external plugins |
-| **solomapling-plugin** (external repo) | Artificial-player framework jar |
+| `gms-server/plugins/*.jar` | Drop zone for jars that implement `ServerExtension` |
 
-SoloMapling sources are **not** a Maven module of this repository.
+Engine code must not import plugin packages. Host integrations go through the SPI and `HostHooks`.
 
-## Host capabilities (no plugin package imports)
-
-Engine code must not `import soloMapling.*`. Use:
+## SPI capabilities
 
 | Capability | API |
 |------------|-----|
+| Plugin lifecycle | `ServerExtension` (`onLoad` / `onServerReady` / `onUnload`) + `ExtensionLoader` |
+| Host services | `HostRuntime`: config, events, commands, optional provisioner / item / drop APIs |
+| Atomic account + character creation | `HostCharacterProvisioner` / `HostCharacterProvisionRequest` |
 | Is this character plugin-owned? | `HostHooks.isArtificial(chr)` / `ArtificialCharacters.isArtificial(id)` |
 | Trade participant rules | `TradeParticipants` / `HostHooks.trade*` + `TradeInviteEvent` |
-| Publish gameplay events | `HostHooks.publish(new CharacterMapEnteredEvent(...))` etc. |
-| Bot performance tier on `Character` | `org.gms.client.BotTier` |
-| Headless session | `org.gms.client.BotClient` |
-| Plugin lifecycle | `ServerExtension` + `ExtensionLoader` |
+| Publish gameplay events | `HostHooks.publish(...)` |
+| Headless session / performance tier | `org.gms.client.BotClient`, `org.gms.client.BotTier` |
 
 Plugins register a `CharacterClassifier` and optionally a `TradeParticipantHook` in `onLoad`.
+
+## Host Hooks
+
+`HostHooks` is the engine-facing facade over registered classifiers and trade hooks:
+
+- skip timeout / map scripts / object placement for artificial characters
+- refuse artificial characters as monster controllers (`MOVE_LIFE` requires a real client)
+- consult trade hooks before applying native trade rules
+- publish map / chat / party / trade events onto `HostEventBus`
 
 ## Load order
 
 1. Spring Boot starts
-2. `ServerManager` builds `BeiDouHostRuntime` and `ExtensionLoader.load(plugins/)` → each extension `onLoad` (classifiers + trade hooks + command registration)
+2. `ServerManager` builds `BeiDouHostRuntime` and `ExtensionLoader.load(plugins/)` → each extension `onLoad`
 3. `Server.init()`
-4. `notifyServerReady()` → `onServerReady` → optional SoloMapling world population
+4. `notifyServerReady()` → `onServerReady`
 5. On shutdown: `onUnload` → `ArtificialCharacters.clear()` / `TradeParticipants.clear()`
 
 ## Config
 
+Host loader keys in `application.yml`:
+
 ```yaml
-solomapling:
+extension:
   plugins-enabled: true
   plugins-dir: plugins
+```
+
+Plugin-specific keys also live in `application.yml` and are read through `HostConfig`. Example for **solomapling-plugin**:
+
+```yaml
+solomapling:
   spawn-bots-on-startup: true
+  companions:
+    enabled: false
+  # language: zh-CN
+  # population-config: ...
+  llm:
+    enabled: false
+    api-key: ${DEEPSEEK_API_KEY:}
+    model: deepseek-v4-flash
+    max-tokens: 80
+    timeout-ms: 10000
+    history-turns: 8
+    fallback-to-yaml: true
 ```
 
 ## Build
 
 ```bash
 mvn -pl extension-api,gms-server -am install -DskipTests
-# then build solomapling-plugin and copy jar into gms-server/plugins/
 ```

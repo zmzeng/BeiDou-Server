@@ -25,7 +25,7 @@ import io.netty.handler.timeout.IdleStateEvent;
 import org.gms.net.packet.Packet;
 
 /**
- * Shared headless Client for SoloMapling bots (no Netty socket).
+ * Shared headless Client for artificial characters (no Netty socket).
  * Credits to NutNNut for the headless client pattern (c) 2026.
  */
 public class BotClient extends Client {

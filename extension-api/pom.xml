@@ -13,7 +13,7 @@
     <artifactId>extension-api</artifactId>
     <packaging>jar</packaging>
     <name>BeiDou Extension API</name>
-    <description>Host/plugin SPI shared by BeiDou runtime and SoloMapling plugin</description>
+    <description>Host/plugin SPI shared by the BeiDou runtime and external ServerExtension jars</description>
 
     <properties>
         <maven.compiler.release>21</maven.compiler.release>

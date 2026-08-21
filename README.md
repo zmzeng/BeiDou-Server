@@ -72,38 +72,61 @@ web中所有的图片均需要联网获取，感谢 https://maplestory.io 提供
 发现很多同学的问题基本在Wiki中都有答案，欢迎大家去看看。另外如果发现Wiki中没有的问题，欢迎提issue，或直接补充。已将Wiki开放为所有人都可以编辑。  
 [Wiki地址](https://github.com/BeiDouMS/BeiDou-Server/wiki)
 
-# 扩展运行时 / SoloMapling
+# 扩展运行时
 
-北斗通过 **薄 SPI** 从 `gms-server/plugins/*.jar` 加载外部扩展。SoloMapling 框架在独立仓库 **solomapling-plugin**；本仓库只保留通用宿主能力（**不** `import soloMapling.*`）：
+北斗通过 **薄 SPI** 从 `gms-server/plugins/*.jar` 加载外部扩展。引擎代码不依赖具体插件包名。
 
 | 组件 | 作用 |
 |------|------|
-| `extension-api` | `ServerExtension` / `HostRuntime` / `ArtificialCharacters` / `TradeParticipantHook` / 生命周期事件 |
+| `extension-api` | `ServerExtension` / `HostRuntime` / `ArtificialCharacters` / `TradeParticipantHook` / `HostCharacterProvisioner` / 生命周期事件 |
 | `org.gms.extension.runtime` | `ExtensionLoader`、`HostHooks` |
 | `org.gms.extension.event` | `CharacterMapEnteredEvent`、`CharacterChatEvent`、`PartyInviteEvent`、`TradeInviteEvent`… |
 | 仿真 API | `BotClient`、`BotTier`、`moveBot` 等 |
-| `gms-server/plugins/` | 放置 `solomapling-plugin-*.jar` |
+| `gms-server/plugins/` | 放置实现了 `ServerExtension` 的插件 jar |
 
-插件在 `onLoad` 注册 `CharacterClassifier` 与可选的 `TradeParticipantHook`；宿主用 `HostHooks.isArtificial` / `HostHooks.trade*` 做超时/脚本/商店/交易分支，并用 `HostHooks.publish` 发游戏事件。详见 `gms-server/src/main/java/org/gms/extension/README.md`。
+## SPI 与 Host Hooks
+
+插件在 `onLoad` 可注册 `CharacterClassifier`、可选的 `TradeParticipantHook`、GM 命令，并调用 `HostCharacterProvisioner` 原子地创建原生账号与角色。
+
+宿主侧通过 `HostHooks` 接入引擎，而不是 import 插件包：
+
+- `HostHooks.isArtificial` — 超时、进图脚本、商店、怪物控制器等分支
+- `HostHooks.trade*` — 交易参与规则
+- `HostHooks.publish` — 把进图 / 聊天 / 组队邀请 / 交易邀请发给已订阅的插件
+
+详见 `gms-server/src/main/java/org/gms/extension/README.md`。
 
 ```bash
-# 1) 安装宿主（供插件 compile provided）
 mvn -pl extension-api,gms-server -am install -DskipTests
-
-# 2) 在 solomapling-plugin 仓库打包，并拷入 plugins/
-cp /path/to/solomapling-plugin/target/solomapling-plugin-*-SNAPSHOT.jar gms-server/plugins/
-
-# 3) 工作目录必须是 gms-server
+# 将插件 jar 放入 gms-server/plugins/ 后启动
 cd gms-server
 java -Xmx4g -Dspring.config.location=src/main/resources/application.yml \
   -jar target/BeiDou-boot.jar
 ```
 
-`application.yml`：
+宿主加载器键写在 `application.yml` 的 `extension` 下：
+
+```yaml
+extension:
+  plugins-enabled: true
+  plugins-dir: plugins
+```
+
+插件自己的配置同样放在 `application.yml`，由 `HostConfig` 按键名读取。以 **solomapling-plugin** 为例：
 
 ```yaml
 solomapling:
-  plugins-enabled: true
-  plugins-dir: plugins
   spawn-bots-on-startup: true
+  companions:
+    enabled: false
+  # language: zh-CN          # 缺省跟随 gms.service.language
+  # population-config: ...   # 可选，覆盖 EnvironmentPopulation.yaml 路径
+  llm:
+    enabled: false
+    api-key: ${DEEPSEEK_API_KEY:}
+    model: deepseek-v4-flash
+    max-tokens: 80
+    timeout-ms: 10000
+    history-turns: 8
+    fallback-to-yaml: true
 ```

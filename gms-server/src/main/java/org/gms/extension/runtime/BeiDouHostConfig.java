@@ -4,13 +4,12 @@ import org.gms.extension.api.HostConfig;
 import org.springframework.core.env.Environment;
 
 /**
- * Reads SoloMapling / extension keys from Spring Environment ({@code application.yml}).
+ * Reads extension keys from Spring Environment ({@code application.yml}).
  */
 public final class BeiDouHostConfig implements HostConfig {
 
-    public static final String SPAWN_BOTS_ON_STARTUP = "solomapling.spawn-bots-on-startup";
-    public static final String PLUGINS_DIR = "solomapling.plugins-dir";
-    public static final String PLUGINS_ENABLED = "solomapling.plugins-enabled";
+    public static final String PLUGINS_DIR = "extension.plugins-dir";
+    public static final String PLUGINS_ENABLED = "extension.plugins-enabled";
 
     private final Environment environment;
 
